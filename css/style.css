@@ -1,0 +1,80 @@
+/* STREAMING_CHUNK:Writing custom stylesheet rules... */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #0d1117;
+  color: #c9d1d9;
+}
+
+code, pre {
+  font-family: 'Fira Code', monospace;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0d1117;
+}
+::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
+}
+
+.tag-btn.active {
+  background-color: #238636 !important;
+  color: #ffffff !important;
+}
+
+.prose pre {
+  background-color: #0d1117;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #30363d;
+  overflow-x: auto;
+}
+.prose code {
+  color: #57ab5a;
+  background-color: rgba(110, 118, 129, 0.4);
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+.prose pre code {
+  background-color: transparent;
+  padding: 0;
+  color: #e6edf3;
+}
+.prose blockquote {
+  border-left: 4px solid #30363d;
+  padding-left: 1rem;
+  color: #8b949e;
+  font-style: italic;
+}
+.prose h1, .prose h2, .prose h3 {
+  color: #e6edf3;
+  font-weight: 700;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+.prose p {
+  margin-bottom: 1em;
+  line-height: 1.7;
+  color: #c9d1d9;
+}
+.prose ul, .prose ol {
+  margin-left: 1.5em;
+  margin-bottom: 1em;
+}
+.prose li {
+  margin-bottom: 0.5em;
+}

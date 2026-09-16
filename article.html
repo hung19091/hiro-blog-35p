@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">載入中... | DevLog</title>
+    
+    <meta id="og-title" property="og:title" content="DevLog 科技部落格">
+    <meta id="og-description" property="og:description" content="閱讀深度技術文章">
+    <meta property="og:type" content="article">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0d1117',
+                        darkCard: '#161b22',
+                        darkBorder: '#30363d',
+                        accent: '#238636',
+                        accentHover: '#2ea043'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Custom CSS & Markdown Parser -->
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body class="bg-darkBg text-gray-100 min-h-screen flex flex-col justify-between selection:bg-accent selection:text-white">
+
+    <header class="border-b border-darkBorder bg-darkCard/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <a href="index.html" class="flex items-center space-x-2 text-xl font-bold tracking-tight text-white group">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition">
+                    <i class="fa-solid fa-code text-sm"></i>
+                </div>
+                <span>Dev<span class="text-emerald-400">Log</span></span>
+            </a>
+            <a href="index.html" class="text-sm font-medium text-gray-400 hover:text-emerald-400 transition flex items-center space-x-1">
+                <i class="fa-solid fa-arrow-left text-xs"></i>
+                <span>返回列表</span>
+            </a>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
+        <article id="article-container" class="bg-darkCard border border-darkBorder rounded-2xl p-6 sm:p-10 shadow-xl mb-12">
+            <div id="article-loading" class="animate-pulse space-y-6">
+                <div class="h-8 bg-darkBorder rounded w-3/4"></div>
+                <div class="flex space-x-4">
+                    <div class="h-4 bg-darkBorder rounded w-32"></div>
+                    <div class="h-4 bg-darkBorder rounded w-32"></div>
+                </div>
+                <div class="space-y-3 pt-6 border-t border-darkBorder">
+                    <div class="h-4 bg-darkBorder rounded w-full"></div>
+                    <div class="h-4 bg-darkBorder rounded w-full"></div>
+                    <div class="h-4 bg-darkBorder rounded w-5/6"></div>
+                </div>
+            </div>
+
+            <div id="article-content-wrapper" class="hidden">
+                <h1 id="art-title" class="text-3xl sm:text-4xl font-extrabold text-white mb-4"></h1>
+                
+                <div class="flex flex-wrap items-center gap-4 text-xs text-gray-400 mb-6 pb-6 border-b border-darkBorder">
+                    <div class="flex items-center space-x-1">
+                        <i class="fa-regular fa-calendar-plus"></i>
+                        <span>建立於：<span id="art-created"></span></span>
+                    </div>
+                    <div class="flex items-center space-x-1" id="updated-wrapper">
+                        <i class="fa-regular fa-pen-to-square"></i>
+                        <span>更新於：<span id="art-updated"></span></span>
+                    </div>
+                    <div id="art-tags" class="flex flex-wrap gap-1.5 ml-auto"></div>
+                </div>
+
+                <div id="art-body" class="prose max-w-none text-gray-300"></div>
+            </div>
+        </article>
+
+        <!-- Comments Section -->
+        <section class="bg-darkCard border border-darkBorder rounded-2xl p-6 sm:p-8 shadow-xl">
+            <h3 class="text-xl font-bold text-white mb-6 flex items-center space-x-2">
+                <i class="fa-regular fa-comments text-emerald-400"></i>
+                <span>讀者留言 (<span id="comment-count">0</span>)</span>
+            </h3>
+
+            <form id="comment-form" class="mb-10 space-y-4 bg-darkBg/60 p-5 rounded-xl border border-darkBorder">
+                <h4 class="text-sm font-semibold text-gray-300">留下您的見解 (留言需經管理員審核後顯示)</h4>
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1">您的暱稱</label>
+                    <input type="text" id="comment-author" required placeholder="例如：Alex Chen" class="w-full bg-darkCard border border-darkBorder rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-emerald-500 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1">留言內容</label>
+                    <textarea id="comment-message" rows="3" required placeholder="寫下您的想法..." class="w-full bg-darkCard border border-darkBorder rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-emerald-500 transition"></textarea>
+                </div>
+
+                <button type="submit" id="submit-comment-btn" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg text-sm transition shadow-md">送出留言</button>
+            </form>
+
+            <div id="comments-list" class="space-y-4">
+                <p class="text-sm text-gray-500 italic">尚無留言，趕快搶頭香吧！</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="border-t border-darkBorder bg-darkCard/50 mt-20 py-8 text-center text-sm text-gray-500">
+        <div class="max-w-4xl mx-auto px-4">
+            <p>&copy; 2026 DevLog. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <div id="app-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-darkCard border border-darkBorder rounded-xl max-w-md w-full p-6 shadow-2xl relative">
+            <h3 id="modal-title" class="text-lg font-bold text-white mb-2">提示訊息</h3>
+            <p id="modal-message" class="text-gray-300 text-sm mb-6"></p>
+            <div class="flex justify-end">
+                <button onclick="closeModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition">確定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showModal(title, message) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-message').innerText = message;
+            document.getElementById('app-modal').classList.remove('hidden');
+        }
+        function closeModal() {
+            document.getElementById('app-modal').classList.add('hidden');
+        }
+    </script>
+    <script type="module" src="js/firebase-config.js"></script>
+    <script type="module" src="js/article.js"></script>
+</body>
+</html>
