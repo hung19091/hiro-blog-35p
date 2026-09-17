@@ -7,7 +7,7 @@
 ```mermaid
 flowchart TD
     A[git push] --> B[GitHub Actions 啟動]
-    B --> C[使用 Service Account 連到 Firestore]
+    B --> C[使用公開 Firestore Read Query 連到 Firestore]
     C --> D[讀取 published == true 的文章]
     D --> E[組合 sitemap.xml]
     E --> F[部署到 GitHub Pages]
@@ -18,6 +18,7 @@ flowchart TD
 - 不會增加前台使用者瀏覽時的 Firestore 讀取量。
 - sitemap 內容會跟 Firestore 的實際文章同步。
 - 不需要手動維護每篇文章網址。
+- 不依賴 Service Account 的 IAM 權限設定。
 
 ## GitHub Pages 路由限制
 
@@ -40,18 +41,6 @@ article.html?slug=your-article-slug
 這個成本通常比「每次使用者或搜尋引擎打開頁面時都現場查資料」更可控。
 
 ## 需要先設定的 GitHub Secrets 與 Variables
-
-### Secret 1：FIREBASE_SERVICE_ACCOUNT
-
-內容放 Firebase Service Account 的完整 JSON。
-
-取得方式：
-
-1. 進入 Firebase Console 對應專案。
-2. 進入 Project Settings。
-3. 進入 Service accounts。
-4. 產生新的私鑰 JSON。
-5. 把整份 JSON 內容存進 GitHub Secret `FIREBASE_SERVICE_ACCOUNT`。
 
 ### Variable 1：SITE_URL
 
@@ -77,7 +66,7 @@ https://your-name.github.io/hiro-blog-35p
 ## 專案新增內容
 
 - `package.json`：提供 `generate:sitemap` 指令。
-- `scripts/generate-sitemap.mjs`：從 Firestore 讀取文章並產生 sitemap。
+- `scripts/generate-sitemap.mjs`：使用 Firestore REST API 讀取公開文章並產生 sitemap。
 - `.github/workflows/deploy-pages.yml`：自動部署流程。
 
 ## 本機手動測試方法
@@ -97,3 +86,4 @@ npm run generate:sitemap
 - `slug` 為空的文章不會被放進 sitemap。
 - 後台頁面不應被 sitemap 收錄。
 - 目前 workflow 已預設 `ARTICLE_URL_FORMAT=query`，這是 GitHub Pages 相容模式。
+- 這套做法依賴目前 Firestore 規則允許未登入使用者讀取已發佈文章。

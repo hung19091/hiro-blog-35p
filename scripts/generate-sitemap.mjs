@@ -1,7 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import process from 'node:process';
-import { cert, getApps, initializeApp } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { readFile } from 'node:fs/promises';
 
 function getRequiredEnv(name) {
     const value = process.env[name];
@@ -12,23 +11,23 @@ function getRequiredEnv(name) {
     return value.trim();
 }
 
-function normalizeServiceAccount(raw) {
-    let parsed;
-    try {
-        parsed = JSON.parse(raw);
-    } catch {
-        throw new Error('FIREBASE_SERVICE_ACCOUNT is not valid JSON');
-    }
-
-    if (typeof parsed.private_key === 'string') {
-        parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
-    }
-
-    return parsed;
-}
-
 function normalizeBaseUrl(url) {
     return url.trim().replace(/\/+$/, '');
+}
+
+async function readFirebaseWebConfig() {
+    const configSource = await readFile(new URL('../js/firebase-config.js', import.meta.url), 'utf8');
+    const projectIdMatch = configSource.match(/projectId:\s*"([^"]+)"/);
+    const apiKeyMatch = configSource.match(/apiKey:\s*"([^"]+)"/);
+
+    if (!projectIdMatch || !apiKeyMatch) {
+        throw new Error('Unable to read projectId or apiKey from js/firebase-config.js');
+    }
+
+    return {
+        projectId: projectIdMatch[1],
+        apiKey: apiKeyMatch[1]
+    };
 }
 
 function inferSiteUrlFromGithubRepository() {
@@ -98,23 +97,45 @@ function buildUrlEntry(loc, lastmod, changefreq, priority) {
 }
 
 async function loadPublishedArticles() {
-    const serviceAccount = normalizeServiceAccount(getRequiredEnv('FIREBASE_SERVICE_ACCOUNT'));
-    const app = getApps()[0] || initializeApp({
-        credential: cert(serviceAccount)
+    const { projectId, apiKey } = await readFirebaseWebConfig();
+    const endpoint = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery?key=${encodeURIComponent(apiKey)}`;
+    const requestBody = {
+        structuredQuery: {
+            from: [{ collectionId: 'articles' }],
+            where: {
+                fieldFilter: {
+                    field: { fieldPath: 'published' },
+                    op: 'EQUAL',
+                    value: { booleanValue: true }
+                }
+            }
+        }
+    };
+
+    const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
     });
-    const db = getFirestore(app);
 
-    const snapshot = await db.collection('articles').where('published', '==', true).get();
+    if (!response.ok) {
+        const bodyText = await response.text();
+        throw new Error(`Firestore REST query failed: ${response.status} ${response.statusText} - ${bodyText}`);
+    }
 
-    return snapshot.docs.map((doc) => {
-        const data = doc.data();
-        const slug = typeof data.slug === 'string' ? data.slug.trim() : '';
-        const updatedAt = data.updatedAt?.toDate ? data.updatedAt.toDate() : null;
-        const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : null;
+    const rows = await response.json();
+
+    return rows.map((row) => {
+        const fields = row.document?.fields || {};
+        const slug = fields.slug?.stringValue?.trim() || '';
+        const updatedAt = fields.updatedAt?.timestampValue || null;
+        const createdAt = fields.createdAt?.timestampValue || null;
 
         return {
             slug,
-            lastmod: (updatedAt || createdAt || new Date()).toISOString()
+            lastmod: updatedAt || createdAt || new Date().toISOString()
         };
     }).filter((article) => article.slug);
 }
