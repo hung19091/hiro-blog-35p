@@ -1,0 +1,11 @@
+{
+    "name": "hiro-blog-35p",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "generate:sitemap": "node scripts/generate-sitemap.mjs"
+    },
+    "dependencies": {
+        "firebase-admin": "^13.5.0"
+    }
+}

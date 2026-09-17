@@ -8,15 +8,32 @@ let currentPage = 1;
 const pageSize = 5;
 
 window.addEventListener('DOMContentLoaded', async () => {
+    setSeoMeta();
     await fetchArticles();
 });
+
+function setSeoMeta() {
+    const homeUrl = new URL('/', window.location.origin).toString();
+    const canonicalLink = document.getElementById('canonical-link');
+    const ogUrl = document.getElementById('og-url');
+    const twitterUrl = document.getElementById('twitter-url');
+
+    if (canonicalLink) canonicalLink.setAttribute('href', homeUrl);
+    if (ogUrl) ogUrl.setAttribute('content', homeUrl);
+    if (twitterUrl) twitterUrl.setAttribute('content', homeUrl);
+}
+
+function buildArticleUrl(slug) {
+    const encodedSlug = encodeURIComponent(slug);
+    return `article.html?slug=${encodedSlug}`;
+}
 
 async function fetchArticles() {
     const listEl = document.getElementById('article-list');
     try {
         const q = query(collection(db, 'articles'), where('published', '==', true));
         const querySnapshot = await getDocs(q);
-        
+
         allArticles = [];
         querySnapshot.forEach((docSnap) => {
             allArticles.push({ id: docSnap.id, ...docSnap.data() });
@@ -46,7 +63,7 @@ function renderTags() {
 
     const filtersEl = document.getElementById('tag-filters');
     let html = `<button onclick="filterByTag('')" class="tag-btn ${currentTag === '' ? 'active bg-emerald-600 text-white' : 'bg-darkCard text-gray-300 border border-darkBorder hover:border-gray-500'} px-3 py-1.5 rounded-full text-xs font-medium transition">全部文章</button>`;
-    
+
     tagSet.forEach(tag => {
         const isActive = currentTag === tag;
         html += `<button onclick="filterByTag('${tag}')" class="tag-btn ${isActive ? 'active bg-emerald-600 text-white' : 'bg-darkCard text-gray-300 border border-darkBorder hover:border-gray-500'} px-3 py-1.5 rounded-full text-xs font-medium transition"># ${tag}</button>`;
@@ -55,10 +72,10 @@ function renderTags() {
     filtersEl.innerHTML = html;
 }
 
-window.filterByTag = function(tag) {
+window.filterByTag = function (tag) {
     currentTag = tag;
     currentPage = 1;
-    
+
     if (tag === '') {
         filteredArticles = [...allArticles];
     } else {
@@ -101,10 +118,10 @@ function renderPage() {
                     <div class="flex flex-wrap gap-1">${tagsHtml}</div>
                 </div>
                 <h2 class="text-xl font-bold text-white mb-2 group-hover:text-emerald-400 transition">
-                    <a href="article.html?slug=${encodeURIComponent(art.slug)}">${escapeHtml(art.title)}</a>
+                    <a href="${buildArticleUrl(art.slug)}">${escapeHtml(art.title)}</a>
                 </h2>
                 <p class="text-gray-400 text-sm mb-4 line-clamp-2">${escapeHtml(art.summary)}</p>
-                <a href="article.html?slug=${encodeURIComponent(art.slug)}" class="inline-flex items-center space-x-1.5 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition">
+                <a href="${buildArticleUrl(art.slug)}" class="inline-flex items-center space-x-1.5 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition">
                     <span>閱讀全文</span>
                     <i class="fa-solid fa-arrow-right text-[10px]"></i>
                 </a>
@@ -127,7 +144,7 @@ function renderPage() {
     paginationEl.innerHTML = pagHtml;
 }
 
-window.changePage = function(page) {
+window.changePage = function (page) {
     const totalPages = Math.ceil(filteredArticles.length / pageSize);
     if (page < 1 || page > totalPages) return;
     currentPage = page;

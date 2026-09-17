@@ -10,6 +10,14 @@
       {
         "source": "/article",
         "destination": "/article.html"
+      },
+      {
+        "source": "/article/**",
+        "destination": "/article.html"
+      },
+      {
+        "source": "/admin",
+        "destination": "/admin.html"
       }
     ],
     "headers": [

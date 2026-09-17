@@ -1,16 +1,25 @@
 <!DOCTYPE html>
 <html lang="zh-Hant" class="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DevLog | 現代化技術部落格</title>
-    
+
     <!-- SEO Meta Tags -->
     <meta name="description" content="探索前端開發、雲端架構、Firebase 與現代化網頁技術的深度技術文章。">
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+    <link rel="canonical" id="canonical-link" href="">
     <meta property="og:title" content="DevLog | 現代化技術部落格">
     <meta property="og:description" content="探索前端開發、雲端架構、Firebase 與現代化網頁技術的深度技術文章。">
     <meta property="og:type" content="website">
-    
+    <meta property="og:site_name" content="DevLog">
+    <meta property="og:url" id="og-url" content="">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="DevLog | 現代化技術部落格">
+    <meta name="twitter:description" content="探索前端開發、雲端架構、Firebase 與現代化網頁技術的深度技術文章。">
+    <meta name="twitter:url" id="twitter-url" content="">
+
     <!-- JSON-LD Schema -->
     <script type="application/ld+json">
     {
@@ -20,7 +29,19 @@
       "description": "探索前端開發、雲端架構、Firebase 與現代化網頁技術的深度技術文章。"
     }
     </script>
-    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const homeUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
+            const canonicalLink = document.getElementById('canonical-link');
+            const ogUrl = document.getElementById('og-url');
+            const twitterUrl = document.getElementById('twitter-url');
+
+            if (canonicalLink) canonicalLink.setAttribute('href', homeUrl);
+            if (ogUrl) ogUrl.setAttribute('content', homeUrl);
+            if (twitterUrl) twitterUrl.setAttribute('content', homeUrl);
+        });
+    </script>
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -44,21 +65,27 @@
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-darkBg text-gray-100 min-h-screen flex flex-col justify-between selection:bg-accent selection:text-white">
+
+<body
+    class="bg-darkBg text-gray-100 min-h-screen flex flex-col justify-between selection:bg-accent selection:text-white">
 
     <header class="border-b border-darkBorder bg-darkCard/80 backdrop-blur sticky top-0 z-50">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
-                <a href="index.html" class="flex items-center space-x-2 text-xl font-bold tracking-tight text-white group">
-                    <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition">
+                <a href="index.html"
+                    class="flex items-center space-x-2 text-xl font-bold tracking-tight text-white group">
+                    <div
+                        class="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition">
                         <i class="fa-solid fa-code text-sm"></i>
                     </div>
                     <span>Dev<span class="text-emerald-400">Log</span></span>
                 </a>
             </div>
             <nav class="flex items-center space-x-4">
-                <a href="index.html" class="text-sm font-medium text-emerald-400 transition hover:text-emerald-300">文章列表</a>
-                <a href="admin.html" class="text-sm font-medium text-gray-400 transition hover:text-gray-200 flex items-center space-x-1">
+                <a href="index.html"
+                    class="text-sm font-medium text-emerald-400 transition hover:text-emerald-300">文章列表</a>
+                <a href="admin.html"
+                    class="text-sm font-medium text-gray-400 transition hover:text-gray-200 flex items-center space-x-1">
                     <i class="fa-solid fa-lock text-xs"></i>
                     <span>後台管理</span>
                 </a>
@@ -68,15 +95,19 @@
 
     <main class="flex-grow max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
         <!-- Hero Banner -->
-        <div class="mb-12 p-8 rounded-2xl bg-gradient-to-r from-darkCard to-[#1f2937] border border-darkBorder shadow-xl relative overflow-hidden">
-            <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div
+            class="mb-12 p-8 rounded-2xl bg-gradient-to-r from-darkCard to-[#1f2937] border border-darkBorder shadow-xl relative overflow-hidden">
+            <div
+                class="absolute -right-10 -bottom-10 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none">
+            </div>
             <h1 class="text-3xl sm:text-4xl font-extrabold text-white mb-3">探索程式碼與雲端架構的無限可能</h1>
             <p class="text-gray-400 text-base sm:text-lg max-w-2xl">分享現代化網頁開發、Serverless 架構、Firebase 實戰經驗與工程最佳實踐。</p>
         </div>
 
         <!-- Tag Filter Section -->
         <div id="tag-filters" class="flex flex-wrap gap-2 mb-8 pb-4 border-b border-darkBorder">
-            <button onclick="filterByTag('')" class="tag-btn active px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-600 text-white transition">全部文章</button>
+            <button onclick="filterByTag('')"
+                class="tag-btn active px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-600 text-white transition">全部文章</button>
         </div>
 
         <!-- Article List Container -->
@@ -100,12 +131,14 @@
     </footer>
 
     <!-- Custom Notification Modal -->
-    <div id="app-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div id="app-modal"
+        class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-darkCard border border-darkBorder rounded-xl max-w-md w-full p-6 shadow-2xl relative">
             <h3 id="modal-title" class="text-lg font-bold text-white mb-2">提示訊息</h3>
             <p id="modal-message" class="text-gray-300 text-sm mb-6"></p>
             <div class="flex justify-end">
-                <button onclick="closeModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition">確定</button>
+                <button onclick="closeModal()"
+                    class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition">確定</button>
             </div>
         </div>
     </div>
@@ -123,4 +156,5 @@
     <script type="module" src="js/firebase-config.js"></script>
     <script type="module" src="js/blog.js"></script>
 </body>
+
 </html>

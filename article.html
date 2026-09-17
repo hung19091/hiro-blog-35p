@@ -1,13 +1,28 @@
 <!DOCTYPE html>
 <html lang="zh-Hant" class="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title id="page-title">載入中... | DevLog</title>
-    
+
+    <meta name="description" id="meta-description" content="閱讀 DevLog 的深度技術文章。">
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+    <link rel="canonical" id="canonical-link" href="">
     <meta id="og-title" property="og:title" content="DevLog 科技部落格">
     <meta id="og-description" property="og:description" content="閱讀深度技術文章">
     <meta property="og:type" content="article">
+    <meta id="og-url" property="og:url" content="">
+    <meta property="og:site_name" content="DevLog">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="DevLog 科技部落格">
+    <meta name="twitter:description" content="閱讀深度技術文章">
+    <meta name="twitter:url" id="twitter-url" content="">
+    <meta name="keywords" id="meta-keywords" content="">
+    <meta property="article:author" content="DevLog">
+    <meta property="article:section" content="技術文章">
+    <meta property="article:published_time" id="article-published-time" content="">
+    <meta property="article:modified_time" id="article-modified-time" content="">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -31,18 +46,42 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script type="application/ld+json" id="article-jsonld">
+        {
+            "@context": "https://schema.org",
+            "@type": "Article",
+            "headline": "載入中",
+            "description": "閱讀 DevLog 的深度技術文章。",
+            "author": {
+                "@type": "Organization",
+                "name": "DevLog"
+            },
+            "publisher": {
+                "@type": "Organization",
+                "name": "DevLog"
+            },
+            "mainEntityOfPage": {
+                "@type": "WebPage",
+                "@id": ""
+            }
+        }
+        </script>
 </head>
-<body class="bg-darkBg text-gray-100 min-h-screen flex flex-col justify-between selection:bg-accent selection:text-white">
+
+<body
+    class="bg-darkBg text-gray-100 min-h-screen flex flex-col justify-between selection:bg-accent selection:text-white">
 
     <header class="border-b border-darkBorder bg-darkCard/80 backdrop-blur sticky top-0 z-50">
         <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <a href="index.html" class="flex items-center space-x-2 text-xl font-bold tracking-tight text-white group">
-                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition">
+                <div
+                    class="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-cyan-600 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition">
                     <i class="fa-solid fa-code text-sm"></i>
                 </div>
                 <span>Dev<span class="text-emerald-400">Log</span></span>
             </a>
-            <a href="index.html" class="text-sm font-medium text-gray-400 hover:text-emerald-400 transition flex items-center space-x-1">
+            <a href="index.html"
+                class="text-sm font-medium text-gray-400 hover:text-emerald-400 transition flex items-center space-x-1">
                 <i class="fa-solid fa-arrow-left text-xs"></i>
                 <span>返回列表</span>
             </a>
@@ -50,7 +89,8 @@
     </header>
 
     <main class="flex-grow max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
-        <article id="article-container" class="bg-darkCard border border-darkBorder rounded-2xl p-6 sm:p-10 shadow-xl mb-12">
+        <article id="article-container"
+            class="bg-darkCard border border-darkBorder rounded-2xl p-6 sm:p-10 shadow-xl mb-12">
             <div id="article-loading" class="animate-pulse space-y-6">
                 <div class="h-8 bg-darkBorder rounded w-3/4"></div>
                 <div class="flex space-x-4">
@@ -66,8 +106,9 @@
 
             <div id="article-content-wrapper" class="hidden">
                 <h1 id="art-title" class="text-3xl sm:text-4xl font-extrabold text-white mb-4"></h1>
-                
-                <div class="flex flex-wrap items-center gap-4 text-xs text-gray-400 mb-6 pb-6 border-b border-darkBorder">
+
+                <div
+                    class="flex flex-wrap items-center gap-4 text-xs text-gray-400 mb-6 pb-6 border-b border-darkBorder">
                     <div class="flex items-center space-x-1">
                         <i class="fa-regular fa-calendar-plus"></i>
                         <span>建立於：<span id="art-created"></span></span>
@@ -94,14 +135,17 @@
                 <h4 class="text-sm font-semibold text-gray-300">留下您的見解 (留言需經管理員審核後顯示)</h4>
                 <div>
                     <label class="block text-xs font-medium text-gray-400 mb-1">您的暱稱</label>
-                    <input type="text" id="comment-author" required placeholder="例如：Alex Chen" class="w-full bg-darkCard border border-darkBorder rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-emerald-500 transition">
+                    <input type="text" id="comment-author" required placeholder="例如：Alex Chen"
+                        class="w-full bg-darkCard border border-darkBorder rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-emerald-500 transition">
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-400 mb-1">留言內容</label>
-                    <textarea id="comment-message" rows="3" required placeholder="寫下您的想法..." class="w-full bg-darkCard border border-darkBorder rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-emerald-500 transition"></textarea>
+                    <textarea id="comment-message" rows="3" required placeholder="寫下您的想法..."
+                        class="w-full bg-darkCard border border-darkBorder rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-emerald-500 transition"></textarea>
                 </div>
 
-                <button type="submit" id="submit-comment-btn" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg text-sm transition shadow-md">送出留言</button>
+                <button type="submit" id="submit-comment-btn"
+                    class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg text-sm transition shadow-md">送出留言</button>
             </form>
 
             <div id="comments-list" class="space-y-4">
@@ -116,12 +160,14 @@
         </div>
     </footer>
 
-    <div id="app-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div id="app-modal"
+        class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-darkCard border border-darkBorder rounded-xl max-w-md w-full p-6 shadow-2xl relative">
             <h3 id="modal-title" class="text-lg font-bold text-white mb-2">提示訊息</h3>
             <p id="modal-message" class="text-gray-300 text-sm mb-6"></p>
             <div class="flex justify-end">
-                <button onclick="closeModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition">確定</button>
+                <button onclick="closeModal()"
+                    class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-medium transition">確定</button>
             </div>
         </div>
     </div>
@@ -139,4 +185,5 @@
     <script type="module" src="js/firebase-config.js"></script>
     <script type="module" src="js/article.js"></script>
 </body>
+
 </html>
