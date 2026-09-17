@@ -13,7 +13,13 @@ function getRequiredEnv(name) {
 }
 
 function normalizeServiceAccount(raw) {
-    const parsed = JSON.parse(raw);
+    let parsed;
+    try {
+        parsed = JSON.parse(raw);
+    } catch {
+        throw new Error('FIREBASE_SERVICE_ACCOUNT is not valid JSON');
+    }
+
     if (typeof parsed.private_key === 'string') {
         parsed.private_key = parsed.private_key.replace(/\\n/g, '\n');
     }
@@ -23,6 +29,38 @@ function normalizeServiceAccount(raw) {
 
 function normalizeBaseUrl(url) {
     return url.trim().replace(/\/+$/, '');
+}
+
+function inferSiteUrlFromGithubRepository() {
+    const repository = process.env.GITHUB_REPOSITORY?.trim();
+    if (!repository || !repository.includes('/')) {
+        return null;
+    }
+
+    const [owner, repoName] = repository.split('/');
+    if (!owner || !repoName) {
+        return null;
+    }
+
+    if (repoName.toLowerCase() === `${owner.toLowerCase()}.github.io`) {
+        return `https://${owner}.github.io`;
+    }
+
+    return `https://${owner}.github.io/${repoName}`;
+}
+
+function resolveSiteUrl() {
+    const explicitSiteUrl = process.env.SITE_URL?.trim();
+    if (explicitSiteUrl) {
+        return normalizeBaseUrl(explicitSiteUrl);
+    }
+
+    const inferredSiteUrl = inferSiteUrlFromGithubRepository();
+    if (inferredSiteUrl) {
+        return normalizeBaseUrl(inferredSiteUrl);
+    }
+
+    throw new Error('Missing SITE_URL and unable to infer it from GITHUB_REPOSITORY');
 }
 
 function getArticleUrl(siteUrl, slug) {
@@ -82,7 +120,7 @@ async function loadPublishedArticles() {
 }
 
 async function main() {
-    const siteUrl = normalizeBaseUrl(getRequiredEnv('SITE_URL'));
+    const siteUrl = resolveSiteUrl();
     const outputDir = process.env.SITEMAP_OUTPUT_DIR?.trim() || '.';
     const articles = await loadPublishedArticles();
 

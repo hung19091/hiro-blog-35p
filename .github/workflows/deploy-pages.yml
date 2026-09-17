@@ -32,7 +32,26 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
+
+      - name: Resolve site URL
+        run: |
+          if [ -n "$SITE_URL" ]; then
+            echo "Resolved SITE_URL from repository variable: $SITE_URL"
+          else
+            REPO_OWNER="${GITHUB_REPOSITORY%%/*}"
+            REPO_NAME="${GITHUB_REPOSITORY##*/}"
+
+            if [ "$REPO_NAME" = "$REPO_OWNER.github.io" ]; then
+              SITE_URL="https://$REPO_OWNER.github.io"
+            else
+              SITE_URL="https://$REPO_OWNER.github.io/$REPO_NAME"
+            fi
+
+            echo "Resolved SITE_URL from repository name: $SITE_URL"
+          fi
+
+          echo "SITE_URL=$SITE_URL" >> "$GITHUB_ENV"
 
       - name: Install dependencies
         run: npm install
