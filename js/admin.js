@@ -6,6 +6,104 @@ let currentUser = null;
 let articlesCache = [];
 let commentsCache = [];
 
+const editorActions = {
+    h1() { return applyEditorFormat('heading', '# ', '標題'); },
+    h2() { return applyEditorFormat('heading', '## ', '副標題'); },
+    bold() { return applyEditorFormat('wrapper', '**', '粗體文字'); },
+    italic() { return applyEditorFormat('wrapper', '*', '斜體文字'); },
+    quote() { return applyEditorFormat('block', '> ', '引用內容'); },
+    code() { return applyEditorFormat('block', '```\n', '\n```'); },
+    'unordered-list'() { return applyEditorFormat('list', '- ', '列表項目'); },
+    'ordered-list'() { return applyEditorFormat('list', '1. ', '列表項目'); },
+    link() { return applyEditorFormat('wrapper', '[', '](https://example.com)'); },
+    image() { return applyEditorFormat('wrapper', '![', '](https://example.com/image.jpg)'); }
+};
+
+function initialiseArticleEditor() {
+    const textarea = document.getElementById('form-content');
+    const preview = document.getElementById('editor-preview');
+    const toggleBtn = document.getElementById('editor-preview-toggle');
+
+    if (!textarea || !preview || !toggleBtn) return;
+
+    const renderPreview = () => {
+        if (typeof marked !== 'undefined') {
+            preview.innerHTML = marked.parse(textarea.value || '');
+        } else {
+            preview.innerHTML = '<p class="text-sm text-amber-300">Markdown preview unavailable.</p>';
+        }
+    };
+
+    const togglePreview = (showPreview) => {
+        const editorBody = document.getElementById('editor-body');
+        const isPreview = !!showPreview;
+
+        if (!editorBody) return;
+        preview.classList.toggle('active', isPreview);
+        textarea.style.display = isPreview ? 'none' : 'block';
+        toggleBtn.textContent = isPreview ? '編輯' : '預覽';
+        toggleBtn.dataset.editorMode = isPreview ? 'preview' : 'write';
+        editorBody.classList.toggle('preview-mode', isPreview);
+
+        if (isPreview) {
+            renderPreview();
+        }
+    };
+
+    toggleBtn.addEventListener('click', () => {
+        const nextMode = toggleBtn.dataset.editorMode === 'preview' ? 'write' : 'preview';
+        togglePreview(nextMode === 'preview');
+    });
+
+    textarea.addEventListener('input', renderPreview);
+    textarea.addEventListener('keyup', renderPreview);
+
+    document.querySelectorAll('[data-editor-action]').forEach(button => {
+        button.addEventListener('click', () => {
+            const action = button.dataset.editorAction;
+            if (editorActions[action]) {
+                editorActions[action]();
+            }
+        });
+    });
+
+    togglePreview(false);
+    renderPreview();
+}
+
+function applyEditorFormat(type, prefix, suffix) {
+    const textarea = document.getElementById('form-content');
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selected = textarea.value.slice(start, end) || '文字';
+    let insertText = '';
+
+    if (type === 'heading') {
+        insertText = `${prefix}${selected}`;
+    } else if (type === 'wrapper') {
+        insertText = `${prefix}${selected}${suffix}`;
+    } else if (type === 'block') {
+        insertText = `${prefix}${selected}${suffix || ''}`;
+    } else if (type === 'list') {
+        const lines = selected ? selected.split('\n').map(line => line.trim() || '項目') : ['項目'];
+        insertText = lines.map((line) => `${prefix}${line}`).join('\n');
+    }
+
+    const before = textarea.value.slice(0, start);
+    const after = textarea.value.slice(end);
+    textarea.value = `${before}${insertText}${after}`;
+    const cursorStart = start + insertText.length;
+    textarea.focus();
+    textarea.setSelectionRange(start, cursorStart);
+
+    const preview = document.getElementById('editor-preview');
+    if (preview && preview.classList.contains('active')) {
+        preview.innerHTML = marked.parse(textarea.value || '');
+    }
+}
+
 onAuthStateChanged(auth, (user) => {
     currentUser = user;
     const loginSection = document.getElementById('login-section');
@@ -85,7 +183,7 @@ async function fetchAdminArticles() {
         let html = '';
         articlesCache.forEach(art => {
             const dateStr = art.createdAt?.toDate ? art.createdAt.toDate().toLocaleDateString() : '剛剛';
-            const statusBadge = art.published 
+            const statusBadge = art.published
                 ? `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-900/40 text-emerald-400 border border-emerald-700/50">已發佈</span>`
                 : `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-900/40 text-amber-400 border border-amber-700/50">草稿</span>`;
 
@@ -139,7 +237,7 @@ async function fetchAdminComments() {
         let html = '';
         commentsCache.forEach(c => {
             const dateStr = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() : '剛剛';
-            const statusBadge = c.approved 
+            const statusBadge = c.approved
                 ? `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-900/40 text-emerald-400 border border-emerald-700/50">已核准</span>`
                 : `<span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-900/40 text-amber-400 border border-amber-700/50">待審核</span>`;
 
@@ -164,13 +262,17 @@ async function fetchAdminComments() {
     }
 }
 
-window.openArticleModal = function(artId = null) {
+window.openArticleModal = function (artId = null) {
+    const toggleBtn = document.getElementById('editor-preview-toggle');
+    const textarea = document.getElementById('form-content');
+    const preview = document.getElementById('editor-preview');
+
     document.getElementById('art-edit-id').value = '';
     document.getElementById('form-title').value = '';
     document.getElementById('form-slug').value = '';
     document.getElementById('form-summary').value = '';
     document.getElementById('form-tags').value = '';
-    document.getElementById('form-content').value = '';
+    textarea.value = '';
     document.getElementById('form-published').checked = false;
     document.getElementById('article-modal-title').innerText = '新增文章';
 
@@ -182,22 +284,35 @@ window.openArticleModal = function(artId = null) {
             document.getElementById('form-slug').value = art.slug || '';
             document.getElementById('form-summary').value = art.summary || '';
             document.getElementById('form-tags').value = art.tags ? art.tags.join(', ') : '';
-            document.getElementById('form-content').value = art.content || '';
+            textarea.value = art.content || '';
             document.getElementById('form-published').checked = !!art.published;
             document.getElementById('article-modal-title').innerText = '編輯文章';
         }
     }
 
+    if (toggleBtn) {
+        toggleBtn.dataset.editorMode = 'write';
+        toggleBtn.textContent = '預覽';
+    }
+    if (preview) {
+        preview.classList.remove('active');
+    }
+    if (textarea) {
+        textarea.style.display = 'block';
+    }
+
     document.getElementById('article-modal').classList.remove('hidden');
 }
 
-window.closeArticleModal = function() {
+window.closeArticleModal = function () {
     document.getElementById('article-modal').classList.add('hidden');
 }
 
-window.editArticle = function(id) {
+window.editArticle = function (id) {
     openArticleModal(id);
 }
+
+initialiseArticleEditor();
 
 document.getElementById('article-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -239,7 +354,7 @@ document.getElementById('article-form').addEventListener('submit', async (e) => 
     }
 });
 
-window.togglePublish = async function(id, publishedState) {
+window.togglePublish = async function (id, publishedState) {
     try {
         await updateDoc(doc(db, 'articles', id), {
             published: publishedState,
@@ -252,7 +367,7 @@ window.togglePublish = async function(id, publishedState) {
     }
 }
 
-window.deleteArticle = async function(id) {
+window.deleteArticle = async function (id) {
     if (!confirm("確定要刪除這篇文章嗎？此動作無法復原。")) return;
     try {
         await deleteDoc(doc(db, 'articles', id));
@@ -263,7 +378,7 @@ window.deleteArticle = async function(id) {
     }
 }
 
-window.approveComment = async function(id, status) {
+window.approveComment = async function (id, status) {
     try {
         await updateDoc(doc(db, 'comments', id), { approved: status });
         await fetchAdminComments();
@@ -273,7 +388,7 @@ window.approveComment = async function(id, status) {
     }
 }
 
-window.deleteComment = async function(id) {
+window.deleteComment = async function (id) {
     if (!confirm("確定要刪除這則留言嗎？")) return;
     try {
         await deleteDoc(doc(db, 'comments', id));

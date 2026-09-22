@@ -28,6 +28,142 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        .editor-shell {
+            border: 1px solid rgba(48, 54, 61, 1);
+            border-radius: 0.875rem;
+            background: rgba(13, 17, 23, 0.9);
+            overflow: hidden;
+        }
+
+        .editor-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding: 0.75rem 0.85rem;
+            border-bottom: 1px solid rgba(48, 54, 61, 1);
+            background: rgba(22, 27, 34, 0.9);
+        }
+
+        .editor-tool {
+            padding: 0.45rem 0.65rem;
+            border-radius: 0.6rem;
+            border: 1px solid rgba(48, 54, 61, 1);
+            background: rgba(13, 17, 23, 0.85);
+            color: #d1d5db;
+            font-size: 0.72rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .editor-tool:hover {
+            border-color: rgba(16, 185, 129, 0.7);
+            color: white;
+        }
+
+        .editor-tool--ghost {
+            color: #9ca3af;
+        }
+
+        .editor-body {
+            display: grid;
+            grid-template-columns: 1fr;
+        }
+
+        .editor-body.preview-mode {
+            grid-template-columns: 1fr;
+        }
+
+        .editor-preview {
+            display: none;
+            width: 100%;
+            min-height: 280px;
+            background: rgba(13, 17, 23, 0.5);
+            padding: 1rem;
+        }
+
+        .editor-preview.active {
+            display: block;
+        }
+
+        #form-content {
+            width: 100%;
+            min-height: 280px;
+            resize: vertical;
+            border: none;
+            background: transparent;
+            color: #f3f4f6;
+            padding: 1rem;
+            font-size: 0.9rem;
+            line-height: 1.7;
+            outline: none;
+        }
+
+        .editor-preview h1,
+        .editor-preview h2,
+        .editor-preview h3,
+        .editor-preview h4 {
+            color: white;
+            font-weight: 700;
+            margin-top: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .editor-preview h1 {
+            font-size: 2rem;
+        }
+
+        .editor-preview h2 {
+            font-size: 1.5rem;
+        }
+
+        .editor-preview h3 {
+            font-size: 1.2rem;
+        }
+
+        .editor-preview p,
+        .editor-preview ul,
+        .editor-preview ol,
+        .editor-preview blockquote,
+        .editor-preview pre {
+            margin-bottom: 1rem;
+            color: #d1d5db;
+        }
+
+        .editor-preview ul,
+        .editor-preview ol {
+            padding-left: 1.5rem;
+        }
+
+        .editor-preview blockquote {
+            border-left: 3px solid rgba(16, 185, 129, 0.8);
+            background: rgba(16, 185, 129, 0.08);
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            color: #e5e7eb;
+        }
+
+        .editor-preview pre {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(48, 54, 61, 1);
+            border-radius: 0.75rem;
+            padding: 0.9rem;
+            overflow-x: auto;
+        }
+
+        .editor-preview code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 0.35rem;
+            padding: 0.15rem 0.35rem;
+        }
+
+        .editor-preview a {
+            color: #34d399;
+            text-decoration: underline;
+        }
+    </style>
 </head>
 
 <body
@@ -189,8 +325,29 @@
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-300 mb-1">完整內容 (支援 Markdown)</label>
-                    <textarea id="form-content" rows="10" required placeholder="# 標題..."
-                        class="w-full bg-darkBg border border-darkBorder rounded-lg px-3 py-2 text-sm text-gray-100 font-mono focus:outline-none focus:border-emerald-500 transition"></textarea>
+                    <div class="editor-shell">
+                        <div class="editor-toolbar">
+                            <button type="button" class="editor-tool" data-editor-action="h1">H1</button>
+                            <button type="button" class="editor-tool" data-editor-action="h2">H2</button>
+                            <button type="button" class="editor-tool"
+                                data-editor-action="bold"><strong>B</strong></button>
+                            <button type="button" class="editor-tool" data-editor-action="italic"><em>I</em></button>
+                            <button type="button" class="editor-tool" data-editor-action="quote">引用</button>
+                            <button type="button" class="editor-tool" data-editor-action="code">程式</button>
+                            <button type="button" class="editor-tool" data-editor-action="unordered-list">列表</button>
+                            <button type="button" class="editor-tool" data-editor-action="ordered-list">編號</button>
+                            <button type="button" class="editor-tool" data-editor-action="link">連結</button>
+                            <button type="button" class="editor-tool" data-editor-action="image">圖片</button>
+                            <button type="button" class="editor-tool editor-tool--ghost" id="editor-preview-toggle"
+                                data-editor-mode="write">預覽</button>
+                        </div>
+                        <div class="editor-body" id="editor-body">
+                            <textarea id="form-content" rows="12" required
+                                placeholder="# 標題...\n\n**重點**\n\n- 內容 1\n- 內容 2\n\n> 引用內容"
+                                class="font-mono"></textarea>
+                            <div id="editor-preview" class="editor-preview"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="flex items-center space-x-2 pt-2">
                     <input type="checkbox" id="form-published"
