@@ -1,6 +1,6 @@
 import { auth, db } from './firebase-config.js';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 let currentUser = null;
 let articlesCache = [];
@@ -398,6 +398,20 @@ window.deleteComment = async function (id) {
         showModal("錯誤", "刪除留言失敗：" + error.message);
     }
 }
+
+window.debugAdmin = async function () {
+    console.log('uid:', auth.currentUser?.uid);
+    console.log('email:', auth.currentUser?.email);
+
+    if (!auth.currentUser) {
+        console.log('未登入');
+        return;
+    }
+
+    const adminDoc = await getDoc(doc(db, 'admins', auth.currentUser.uid));
+    console.log('admin exists:', adminDoc.exists());
+    console.log('admin data:', adminDoc.data());
+};
 
 function escapeHtml(str) {
     if (!str) return '';

@@ -1,22 +1,40 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Articles Collection Rules
-    match /articles/{articleId} {
-      // Anyone can read published articles
-      allow read: if resource.data.published == true || request.auth != null;
-      
-      // Only authenticated admin can create, update, or delete articles
-      allow write: if request.auth != null;
+
+    // ====== 管理者白名單 ======
+    // 這裡使用 Firebase Auth 的 UID 作為白名單，因為 UID 是唯一且穩定的。
+    // 先在 Firebase Console > Authentication > Users 中找到該帳號的 UID，
+    // 再在 Firestore 建立 admins/{uid} 文件，欄位可寫入 { email: "xxx@gmail.com", role: "admin" }
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Comments Collection Rules
+    function isAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    match /admins/{uid} {
+      allow get: if isSignedIn() && request.auth.uid == uid;
+      allow create, update, delete: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ====== 文章集合 ======
+    match /articles/{articleId} {
+      // 任何人都能讀取已發布文章
+      allow read: if resource.data.published == true || isAdmin();
+
+      // 只有管理者可以新增、修改、刪除文章
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ====== 留言集合 ======
     match /comments/{commentId} {
-      // Anyone can read approved comments
-      allow read: if resource.data.approved == true || request.auth != null;
-      
-      // Anyone can create a comment (with mandatory unapproved default)
+      // 任何人都能讀取已核准留言，管理者也可讀取所有留言
+      allow read: if resource.data.approved == true || isAdmin();
+
+      // 任何人都可以留言，但留言必須是未核准狀態，且欄位長度受限
       allow create: if request.resource.data.approved == false
                     && request.resource.data.author is string
                     && request.resource.data.author.size() > 0
@@ -25,8 +43,8 @@ service cloud.firestore {
                     && request.resource.data.message.size() > 0
                     && request.resource.data.message.size() <= 1000;
 
-      // Only authenticated admin can update (approve) or delete comments
-      allow update, delete: if request.auth != null;
+      // 只有管理者能核准、取消核准或刪除留言
+      allow update, delete: if isAdmin();
     }
   }
 }
