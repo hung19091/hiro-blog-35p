@@ -1,10 +1,12 @@
-import { auth, db } from './firebase-config.js';
+import { auth, db, storage } from './firebase-config.js';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
 let currentUser = null;
 let articlesCache = [];
 let commentsCache = [];
+let imageUploadInProgress = false;
 
 const editorActions = {
     h1() { return applyEditorFormat('heading', '# ', '標題'); },
@@ -16,7 +18,7 @@ const editorActions = {
     'unordered-list'() { return applyEditorFormat('list', '- ', '列表項目'); },
     'ordered-list'() { return applyEditorFormat('list', '1. ', '列表項目'); },
     link() { return applyEditorFormat('wrapper', '[', '](https://example.com)'); },
-    image() { return applyEditorFormat('wrapper', '![', '](https://example.com/image.jpg)'); }
+    image() { return triggerImageUpload(); }
 };
 
 function initialiseArticleEditor() {
@@ -61,6 +63,10 @@ function initialiseArticleEditor() {
     document.querySelectorAll('[data-editor-action]').forEach(button => {
         button.addEventListener('click', () => {
             const action = button.dataset.editorAction;
+            if (action === 'image') {
+                triggerImageUpload();
+                return;
+            }
             if (editorActions[action]) {
                 editorActions[action]();
             }
@@ -69,6 +75,77 @@ function initialiseArticleEditor() {
 
     togglePreview(false);
     renderPreview();
+}
+
+async function triggerImageUpload() {
+    if (imageUploadInProgress) {
+        return;
+    }
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'none';
+
+    input.addEventListener('change', async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            showModal('格式錯誤', '請選擇圖片檔案。');
+            return;
+        }
+
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+            showModal('圖片過大', '請上傳 5MB 以內的圖片。');
+            return;
+        }
+
+        imageUploadInProgress = true;
+        showModal('上傳中', '圖片正在上傳，請稍候...');
+
+        try {
+            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const storageRef = ref(storage, `articles/${Date.now()}-${safeName}`);
+            await uploadBytes(storageRef, file);
+            const downloadUrl = await getDownloadURL(storageRef);
+            const baseName = safeName.replace(/\.[^/.]+$/, '') || 'image';
+            insertMarkdownImage(downloadUrl, baseName);
+            closeModal();
+            showModal('上傳成功', '圖片已加入文章內容。');
+        } catch (error) {
+            console.error('Image upload error:', error);
+            showModal('上傳失敗', '圖片上傳失敗：' + error.message);
+        } finally {
+            imageUploadInProgress = false;
+        }
+    });
+
+    document.body.appendChild(input);
+    input.click();
+    input.remove();
+}
+
+function insertMarkdownImage(url, altText = '圖片') {
+    const textarea = document.getElementById('form-content');
+    if (!textarea) return;
+
+    const markdown = `![${altText}](${url})\n\n`;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const before = textarea.value.slice(0, start);
+    const after = textarea.value.slice(end);
+    textarea.value = `${before}${markdown}${after}`;
+
+    const newCursor = start + markdown.length;
+    textarea.focus();
+    textarea.setSelectionRange(newCursor, newCursor);
+
+    const preview = document.getElementById('editor-preview');
+    if (preview && preview.classList.contains('active')) {
+        preview.innerHTML = marked.parse(textarea.value || '');
+    }
 }
 
 function applyEditorFormat(type, prefix, suffix) {
