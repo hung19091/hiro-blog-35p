@@ -448,7 +448,6 @@ document.getElementById('article-form').addEventListener('submit', async (e) => 
         tags,
         content,
         published,
-        authorUid: auth.currentUser?.uid ?? null,
         updatedAt: serverTimestamp()
     };
 
@@ -458,6 +457,7 @@ document.getElementById('article-form').addEventListener('submit', async (e) => 
             showModal("成功", "文章更新成功！");
         } else {
             articleData.createdAt = serverTimestamp();
+            articleData.authorUid = auth.currentUser?.uid ?? null;
             await addDoc(collection(db, 'articles'), articleData);
             showModal("成功", "文章新增成功！");
         }
