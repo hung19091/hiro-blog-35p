@@ -36,6 +36,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 ```
 
 ### 逐行解釋
@@ -70,6 +71,53 @@ import { getFirestore, initializeFirestore, persistentLocalCache, persistentMult
 
 這是這份專案最重要的 Firestore 設定之一。
 
+#### 第 4 行
+```js
+import { getStorage } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+```
+
+- `getStorage` 是 Firebase Storage 的初始化入口
+- 這是圖片上傳、檔案儲存和下載 URL 取得的核心依賴
+- 在此專案中，它讓後台文章編輯器可以直接把文章圖片上傳到 `articles/` 路徑下
+
+---
+
+## 3.5 Firebase Storage 初始化：`storage`
+
+原始碼位置：`js/firebase-config.js: 21-26`
+
+```js
+export const storage = getStorage(app);
+```
+
+### 這一行的作用
+
+它會建立 Firebase Storage 實例，讓所有前端模組都可以使用：
+
+```js
+import { storage } from './firebase-config.js';
+```
+
+之後就能直接做：
+
+- `ref(storage, 'articles/...')`
+- `uploadBytes(...)`
+- `getDownloadURL(...)`
+
+### 這對本專案的重要性
+
+這代表：
+
+- 文章圖片不再只能放在外部連結
+- 後台可以把圖片直接上傳到 Firebase Storage
+- 文章內容中可以嵌入已上傳圖片的下載 URL
+
+這是目前正式可用的圖片上傳方案之一。
+
+---
+
+## 4. FirebaseConfig 物件：專案設定
+
 ---
 
 ## 3. FirebaseConfig 物件：專案設定
@@ -87,6 +135,14 @@ const firebaseConfig = {
 ```
 
 ### 功能
+
+這個設定非常重要，因為它同時定義：
+
+- Firebase Authentication 的身份驗證邏輯
+- Firestore 的資料庫連線
+- Firebase Storage 的儲存桶位址
+
+也就是說，這份設定不只是「資料庫」設定，而是整體 Firebase 服務的入口設定。
 
 這裡放的是 Firebase 專案的各項設定值，主要包括：
 

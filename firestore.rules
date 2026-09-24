@@ -23,10 +23,18 @@ service cloud.firestore {
     // ====== 文章集合 ======
     match /articles/{articleId} {
       // 任何人都能讀取已發布文章
-      allow read: if resource.data.published == true || isAdmin();
+      allow read: if resource.data.published == true
+        || resource.data.authorUid == request.auth.uid
+        || isAdmin();
 
-      // 只有管理者可以新增、修改、刪除文章
-      allow create, update, delete: if isAdmin();
+      // 登入後可以發表文章
+      allow create: if isSignedIn()
+        && request.resource.data.authorUid == request.auth.uid;
+
+      // 登入後可以編輯自己的文章
+      allow update, delete: if isAdmin()
+        || (isSignedIn() && resource.data.authorUid == request.auth.uid);
+
     }
 
     // ====== 留言集合 ======
@@ -43,8 +51,8 @@ service cloud.firestore {
                     && request.resource.data.message.size() > 0
                     && request.resource.data.message.size() <= 1000;
 
-      // 只有管理者能核准、取消核准或刪除留言
-      allow update, delete: if isAdmin();
+      // 登入後可以批准自己的文章的留言
+      allow update, delete: if isAdmin() || (isSignedIn() && resource.data.authorUid == request.auth.uid);
     }
   }
 }

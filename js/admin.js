@@ -1,6 +1,6 @@
 import { auth, db, storage } from './firebase-config.js';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
 let currentUser = null;
@@ -181,7 +181,7 @@ function applyEditorFormat(type, prefix, suffix) {
     }
 }
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     const loginSection = document.getElementById('login-section');
     const dashboardSection = document.getElementById('dashboard-section');
@@ -195,7 +195,19 @@ onAuthStateChanged(auth, (user) => {
         userNavArea.classList.add('flex');
         userEmailSpan.innerText = user.email;
 
-        loadAdminData();
+        try {
+            const adminDoc = await getDoc(doc(db, 'admins', user.uid));
+            const isAdminUser = adminDoc.exists();
+
+            if (isAdminUser) {
+                await loadAdminData();
+            } else {
+                await loadMyArticles();
+            }
+        } catch (error) {
+            console.error('Error checking admin access:', error);
+            showModal('權限錯誤', '檢查使用者權限時發生錯誤：' + error.message);
+        }
     } else {
         loginSection.classList.remove('hidden');
         dashboardSection.classList.add('hidden');
@@ -237,10 +249,36 @@ async function loadAdminData() {
     await fetchAdminComments();
 }
 
-async function fetchAdminArticles() {
+async function loadMyArticles() {
+    await fetchAdminArticles(true);
+}
+
+async function refreshCurrentUserArticleList() {
+    if (!auth.currentUser) return;
+
+    try {
+        const adminDoc = await getDoc(doc(db, 'admins', auth.currentUser.uid));
+        if (adminDoc.exists()) {
+            await loadAdminData();
+        } else {
+            await loadMyArticles();
+        }
+    } catch (error) {
+        console.error('Error refreshing article list:', error);
+        showModal('權限錯誤', '重新載入文章列表時發生錯誤：' + error.message);
+    }
+}
+
+async function fetchAdminArticles(forceUserScope = false) {
     const tbody = document.getElementById('admin-articles-list');
     try {
-        const querySnapshot = await getDocs(collection(db, 'articles'));
+        let articleQuery = collection(db, 'articles');
+
+        if (forceUserScope) {
+            articleQuery = query(articleQuery, where('authorUid', '==', auth.currentUser?.uid ?? ''));
+        }
+
+        const querySnapshot = await getDocs(articleQuery);
         articlesCache = [];
         querySnapshot.forEach(docSnap => {
             articlesCache.push({ id: docSnap.id, ...docSnap.data() });
@@ -410,6 +448,7 @@ document.getElementById('article-form').addEventListener('submit', async (e) => 
         tags,
         content,
         published,
+        authorUid: auth.currentUser?.uid ?? null,
         updatedAt: serverTimestamp()
     };
 
@@ -424,7 +463,7 @@ document.getElementById('article-form').addEventListener('submit', async (e) => 
         }
 
         closeArticleModal();
-        await fetchAdminArticles();
+        await refreshCurrentUserArticleList();
     } catch (error) {
         console.error("Error saving article:", error);
         showModal("錯誤", "儲存文章失敗：" + error.message);
@@ -437,7 +476,7 @@ window.togglePublish = async function (id, publishedState) {
             published: publishedState,
             updatedAt: serverTimestamp()
         });
-        await fetchAdminArticles();
+        await refreshCurrentUserArticleList();
     } catch (error) {
         console.error("Error toggling publish state:", error);
         showModal("錯誤", "更新發佈狀態失敗：" + error.message);
@@ -448,7 +487,7 @@ window.deleteArticle = async function (id) {
     if (!confirm("確定要刪除這篇文章嗎？此動作無法復原。")) return;
     try {
         await deleteDoc(doc(db, 'articles', id));
-        await fetchAdminArticles();
+        await refreshCurrentUserArticleList();
     } catch (error) {
         console.error("Error deleting article:", error);
         showModal("錯誤", "刪除文章失敗：" + error.message);

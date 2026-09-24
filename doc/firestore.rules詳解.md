@@ -201,7 +201,7 @@ admins/AxU8ApQhu.....zz1
 ```firestore
     match /admins/{uid} {
       allow get: if isSignedIn() && request.auth.uid == uid;
-      allow create, update, delete: if isSignedIn() && request.auth.uid == uid;
+      allow create, update, delete: if isAdmin();
     }
 ```
 
@@ -236,31 +236,76 @@ admins/user456
 
 #### 第 24 行
 ```firestore
-      allow create, update, delete: if isSignedIn() && request.auth.uid == uid;
+      allow create, update, delete: if isAdmin();
 ```
 
-- 只有登入者本人能新增、更新、刪除自己的 admin 文件
-- 這是很安全的設計
+- 只有已存在 admin 白名單中的使用者，才能新增／更新／刪除 admin 文件
+- 這樣可以避免一般使用者自行建立一個假的 admin 資料
 
-### 這是什麼意思
+> 這份規則僅適用於 Firestore。Firebase Storage 的權限必須另外在 Firebase Console 的 Storage Rules 設定，不能直接寫在這裡。
 
-這是「帳號自身管理自己的 admin 權限資料」的規則。
+---
 
-不過真正控制是否能管理文章、留言的核心，其實是下一段 `match /articles/{articleId}` 與 `match /comments/{commentId}`。
+## 6. Storage 規則與 Firestore 規則不同
+
+這點曾經是專案中最常見的錯誤：
+
+- `firestore.rules` 只保護 Firestore
+- Firebase Storage 另有一套 `storage.rules`
+- 兩者不能混用，也不能把 `exists()` 這種 Firestore 語法直接放進 Storage 規則
+
+### 正確做法
+
+如果要讓後台能上傳文章圖片，應該在 Firebase Console → Storage → Rules 中設定：
+
+```js
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /articles/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
+```
+
+### 這段規則的意義
+
+- `allow read: if true;`：公開讀取圖片
+- `allow write: if request.auth != null;`：必須登入之後才可寫入
+
+這樣就能讓文章中的圖片上傳功能正常工作，而不會再因為把 Storage 規則放錯地方而導致 `storage/unauthorized` 錯誤。
 
 ---
 
 ## 7. 文章集合規則：`match /articles/{articleId}`
 
-原始碼位置：`firestore.rules: 29-36`
+原始碼位置：`firestore.rules: 29-47`
 
 ```firestore
     match /articles/{articleId} {
       // 任何人都能讀取已發布文章
-      allow read: if resource.data.published == true || isAdmin();
+      // 文章作者本人也能讀取自己的文章
+      // 管理者可讀取全部文章
+      allow read: if resource.data.published == true
+                  || resource.data.authorUid == request.auth.uid
+                  || isAdmin();
 
-      // 只有管理者可以新增、修改、刪除文章
-      allow create, update, delete: if isAdmin();
+      // 已登入使用者只能建立自己的文章
+      // 文章作者 UID 必須等於當前登入使用者 UID
+      allow create: if isSignedIn()
+                    && request.resource.data.authorUid == request.auth.uid;
+
+      // 管理者可完整修改任何文章
+      // 文章作者本人可更新自己的文章
+      allow update: if isAdmin()
+                    || (isSignedIn() && resource.data.authorUid == request.auth.uid);
+
+      // 管理者可刪除任何文章
+      // 文章作者本人可刪除自己的文章
+      allow delete: if isAdmin()
+                    || (isSignedIn() && resource.data.authorUid == request.auth.uid);
     }
 ```
 
@@ -274,46 +319,54 @@ admins/user456
 - 針對 `articles` 集合的每一篇文章做規則設定
 - `articleId` 是文件 ID
 
-#### 第 30 行
+#### 第 30-34 行：讀取規則
 ```firestore
-      allow read: if resource.data.published == true || isAdmin();
+      allow read: if resource.data.published == true
+                  || resource.data.authorUid == request.auth.uid
+                  || isAdmin();
 ```
 
-這行非常重要。它表示：
+這表示：
 
-- 若文章 `published` 欄位是 `true`，任何人都可讀
-- 或者若使用者是 admin，則也可讀
+- 若文章 `published == true`，任何人可讀
+- 若文章作者是目前登入者，也可讀
+- 若使用者是 admin，也可讀
 
-也就是說：
+這是目前版本的關鍵設計，因為已經加入 `authorUid` 欄位，讓作者能讀取自己的草稿與內容。 
 
-- 公開文章：任何人可看
-- 草稿文章：只有 admin 可看
-
-### 判斷邏輯說明
-
+#### 第 35-38 行：建立規則
 ```firestore
-resource.data.published == true
+      allow create: if isSignedIn()
+                    && request.resource.data.authorUid == request.auth.uid;
 ```
 
-- `resource.data` 指目前被讀取的文章文件內容
-- `published` 是文章是否發佈的布林值
+- 必須登入
+- 新增文章時，`authorUid` 必須等於目前登入使用者 UID
+- 這樣就不能讓非登入的使用者、或其他使用者冒用別人的 UID
 
-如果文章不是公開狀態，則不會被匿名訪客讀取。
-
-#### 第 33 行
+#### 第 39-45 行：更新與刪除規則
 ```firestore
-      allow create, update, delete: if isAdmin();
+      allow update: if isAdmin()
+                    || (isSignedIn() && resource.data.authorUid == request.auth.uid);
 ```
 
-- 只有 admin 才能新增、修改、刪除文章
-- 這裡沒有放寬條件
-- 若不是 admin，直接不允許
+```firestore
+      allow delete: if isAdmin()
+                    || (isSignedIn() && resource.data.authorUid == request.auth.uid);
+```
+
+- 管理者可管理所有文章
+- 作者本人可更新或刪除自己的文章
 
 ### 這代表什麼
 
-即使前端 `admin.js` 裡面有新增文章按鈕，如果你不是 admin，Firestore 也絕對不會接受這個寫入請求。
+這不再是單純的「全站只有 admin 可寫」設計，而是變成更實用的擁有者模式：
 
-這就是安全規則真正的防線。
+- 公開文章可讀
+- 作者可管理自己的文章
+- 管理者仍可維護整體內容
+
+這也正是你現在問到的「非 admin 使用者登入後，仍能看到自己文章」需求的根本解法。
 
 ---
 
@@ -549,8 +602,9 @@ UID 的優點：
 
 - 已登入使用者若存在 `admins/{uid}`，就可以管理內容
 - 已發布文章可以公開讀取
+- 作者本人可以讀取與管理自己的文章
 - 留言必須先通過審核才能顯示
-- 任何寫入文章、刪除留言、核准留言，必須由 admin 才能做
+- 任何寫入文章、刪除留言、核准留言，主要由 admin 負責，但文章作者可管理自己的文章
 
 ---
 
@@ -559,15 +613,15 @@ UID 的優點：
 這份規則能避免以下問題：
 
 - 未登入者直接修改資料
-- 一般訪客新增文章
-- 一般使用者直接刪除文章
+- 一般訪客冒用別人的 UID 建立文章
+- 一般使用者直接刪除其他人的文章
 - 一般使用者直接核准留言
 - 一般使用者直接刪除留言
 - 任何人隨意改動公開內容
 
 也就是說：
 
-這份規則是整個博客是否安全的核心分界線。
+這份規則是整個博客是否安全的核心分界線，同時也保留了作者能管理自己內容的必要能力。
 
 ---
 

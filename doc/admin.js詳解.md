@@ -29,24 +29,26 @@
 
 ## 2. 檔案最上方：匯入 Firebase 相關模組
 
-原始碼位置：`js/admin.js: 1-3`
+原始碼位置：`js/admin.js: 1-4`
 
 ```js
-import { auth, db } from './firebase-config.js';
+import { auth, db, storage } from './firebase-config.js';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 ```
 
 ### 逐行解釋
 
 #### 第 1 行
 ```js
-import { auth, db } from './firebase-config.js';
+import { auth, db, storage } from './firebase-config.js';
 ```
 
-- 從 `firebase-config.js` 匯入 Firebase 的 `auth` 物件與 `db` 物件。
+- 從 `firebase-config.js` 匯入 Firebase 的 `auth`、`db`、`storage` 物件。
 - `auth`：負責登入、登出、驗證使用者
 - `db`：Firestore 資料庫實例，負責讀寫文章與留言
+- `storage`：Firebase Storage 實例，負責圖片上傳與下載
 
 #### 第 2 行
 ```js
@@ -73,16 +75,29 @@ import { collection, getDocs, getDoc, addDoc, updateDoc, deleteDoc, doc, serverT
   - `doc`：建立文件參照
   - `serverTimestamp`：產生後端伺服器時間
 
-這些函式是整個後台操作的核心。
+#### 第 4 行
+```js
+import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
+```
+
+- 匯入 Firebase Storage 的關鍵 API：
+  - `ref`：建立儲存空間路徑參照
+  - `uploadBytes`：上傳檔案到 Storage
+  - `getDownloadURL`：取得檔案的可公開讀取 URL
+
+這些函式是整個後台操作與圖片上傳功能的核心。
 
 ---
 
 ## 3. 全域變數：保存當前使用者與資料快取
 
+原始碼位置：`js/admin.js: 5-8`
+
 ```js
 let currentUser = null;
 let articlesCache = [];
 let commentsCache = [];
+let imageUploadInProgress = false;
 ```
 
 ### 逐行解釋
@@ -115,6 +130,8 @@ let commentsCache = [];
 
 ## 4. Markdown 編輯器工具列：定義按鈕功能
 
+原始碼位置：`js/admin.js: 10-22`
+
 ```js
 const editorActions = {
     h1() { return applyEditorFormat('heading', '# ', '標題'); },
@@ -126,7 +143,7 @@ const editorActions = {
     'unordered-list'() { return applyEditorFormat('list', '- ', '列表項目'); },
     'ordered-list'() { return applyEditorFormat('list', '1. ', '列表項目'); },
     link() { return applyEditorFormat('wrapper', '[', '](https://example.com)'); },
-    image() { return applyEditorFormat('wrapper', '![', '](https://example.com/image.jpg)'); }
+    image() { return triggerImageUpload(); }
 };
 ```
 
@@ -139,7 +156,7 @@ const editorActions = {
 - `h1()`：插入 `# ` 標題語法
 - `bold()`：包住選取內容，變成 `**粗體**`
 - `link()`：包成 `[文字](https://example.com)`
-- `image()`：包成 `![圖片](https://example.com/image.jpg)`
+- `image()`：觸發圖片上傳流程，將圖片 URL 插入文章內容
 
 ### 為什麼這樣寫？
 
@@ -152,7 +169,142 @@ applyEditorFormat()
 
 ---
 
-## 5. 初始化 Markdown 編輯器
+## 5. 圖片上傳：`triggerImageUpload()`
+
+原始碼位置：`js/admin.js: 80-127`
+
+```js
+async function triggerImageUpload() {
+    if (imageUploadInProgress) {
+        return;
+    }
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.style.display = 'none';
+
+    input.addEventListener('change', async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            showModal('格式錯誤', '請選擇圖片檔案。');
+            return;
+        }
+
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+            showModal('圖片過大', '請上傳 5MB 以內的圖片。');
+            return;
+        }
+
+        imageUploadInProgress = true;
+        showModal('上傳中', '圖片正在上傳，請稍候...');
+
+        try {
+            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const storageRef = ref(storage, `articles/${Date.now()}-${safeName}`);
+            await uploadBytes(storageRef, file);
+            const downloadUrl = await getDownloadURL(storageRef);
+            const baseName = safeName.replace(/\.[^/.]+$/, '') || 'image';
+            insertMarkdownImage(downloadUrl, baseName);
+            closeModal();
+            showModal('上傳成功', '圖片已加入文章內容。');
+        } catch (error) {
+            console.error('Image upload error:', error);
+            showModal('上傳失敗', '圖片上傳失敗：' + error.message);
+        } finally {
+            imageUploadInProgress = false;
+        }
+    });
+
+    document.body.appendChild(input);
+    input.click();
+    input.remove();
+}
+```
+
+### 功能說明
+
+這段是後台文章編輯器最重要的圖片功能之一。真正的流程如下：
+
+1. 建立一個隱藏的 `input type="file"`
+2. 只允許選擇圖片
+3. 檢查圖片格式與大小
+4. 先用 `ref(storage, ... )` 指向 Firebase Storage 路徑
+5. 用 `uploadBytes(storageRef, file)` 上傳到 `articles/` 目錄
+6. 用 `getDownloadURL(storageRef)` 取得公開下載 URL
+7. 呼叫 `insertMarkdownImage()` 把 URL 插入文章 Markdown
+
+### 在這個專案裡的意義
+
+這代表文章內可以直接插入圖片，而不是只能引用外部圖片連結。這對部落格來說很實用，因為：
+
+- 文章圖片可被版本控與管理
+- 可在 Firebase Storage 管理資源
+- 圖片能直接顯示在文章內容中
+
+### 注意點
+
+這個功能已驗證可用，前提是：
+
+- Firebase Storage 已開啟
+- 規則已正確發佈
+- 登入使用者有有效身份驗證
+
+這也正是之前修正的重點：Storage 規則必須放在 Firebase Console 的 Storage 區塊，而不是放在 Firestore 的 `[firestore.rules](../firestore.rules)` 內。
+
+---
+
+## 6. 將圖片插入 Markdown：`insertMarkdownImage()`
+
+原始碼位置：`js/admin.js: 130-148`
+
+```js
+function insertMarkdownImage(url, altText = '圖片') {
+    const textarea = document.getElementById('form-content');
+    if (!textarea) return;
+
+    const markdown = `![${altText}](${url})\n\n`;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const before = textarea.value.slice(0, start);
+    const after = textarea.value.slice(end);
+    textarea.value = `${before}${markdown}${after}`;
+
+    const newCursor = start + markdown.length;
+    textarea.focus();
+    textarea.setSelectionRange(newCursor, newCursor);
+
+    const preview = document.getElementById('editor-preview');
+    if (preview && preview.classList.contains('active')) {
+        preview.innerHTML = marked.parse(textarea.value || '');
+    }
+}
+```
+
+### 功能說明
+
+這個函式是圖片上傳完成後的最後一步：
+
+- 產生 Markdown 語法：`![alt](url)`
+- 把它插入目前文章編輯器的游標位置
+- 若目前處於預覽模式，會立即更新預覽內容
+
+實際效果就是：
+
+```md
+![範例圖片](https://firebasestorage.googleapis.com/.../image.png)
+```
+
+這種語法會由文章頁的 `marked.parse()` 正確渲染成 HTML 圖片。
+
+---
+
+## 7. 初始化 Markdown 編輯器
+
+原始碼位置：`js/admin.js: 23-78`
 
 ```js
 function initialiseArticleEditor() {
@@ -414,8 +566,10 @@ else if (type === 'list') {
 
 ## 13. Firebase Auth 登入狀態監聽
 
+原始碼位置：`js/admin.js: 184-214`
+
 ```js
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     const loginSection = document.getElementById('login-section');
     const dashboardSection = document.getElementById('dashboard-section');
@@ -429,7 +583,19 @@ onAuthStateChanged(auth, (user) => {
         userNavArea.classList.add('flex');
         userEmailSpan.innerText = user.email;
 
-        loadAdminData();
+        try {
+            const adminDoc = await getDoc(doc(db, 'admins', user.uid));
+            const isAdminUser = adminDoc.exists();
+
+            if (isAdminUser) {
+                await loadAdminData();
+            } else {
+                await loadMyArticles();
+            }
+        } catch (error) {
+            console.error('Error checking admin access:', error);
+            showModal('權限錯誤', '檢查使用者權限時發生錯誤：' + error.message);
+        }
     } else {
         loginSection.classList.remove('hidden');
         dashboardSection.classList.add('hidden');
@@ -530,10 +696,32 @@ document.getElementById('logout-btn').addEventListener('click', async () => {
 
 ## 16. 載入後台資料：`loadAdminData()`
 
+原始碼位置：`js/admin.js: 247-269`
+
 ```js
 async function loadAdminData() {
     await fetchAdminArticles();
     await fetchAdminComments();
+}
+
+async function loadMyArticles() {
+    await fetchAdminArticles(true);
+}
+
+async function refreshCurrentUserArticleList() {
+    if (!auth.currentUser) return;
+
+    try {
+        const adminDoc = await getDoc(doc(db, 'admins', auth.currentUser.uid));
+        if (adminDoc.exists()) {
+            await loadAdminData();
+        } else {
+            await loadMyArticles();
+        }
+    } catch (error) {
+        console.error('Error refreshing article list:', error);
+        showModal('權限錯誤', '重新載入文章列表時發生錯誤：' + error.message);
+    }
 }
 ```
 
@@ -548,11 +736,19 @@ async function loadAdminData() {
 
 ## 17. 文章列表讀取：`fetchAdminArticles()`
 
+原始碼位置：`js/admin.js: 272-329`
+
 ```js
-async function fetchAdminArticles() {
+async function fetchAdminArticles(forceUserScope = false) {
     const tbody = document.getElementById('admin-articles-list');
     try {
-        const querySnapshot = await getDocs(collection(db, 'articles'));
+        let articleQuery = collection(db, 'articles');
+
+        if (forceUserScope) {
+            articleQuery = query(articleQuery, where('authorUid', '==', auth.currentUser?.uid ?? ''));
+        }
+
+        const querySnapshot = await getDocs(articleQuery);
         articlesCache = [];
         querySnapshot.forEach(docSnap => {
             articlesCache.push({ id: docSnap.id, ...docSnap.data() });
@@ -818,6 +1014,8 @@ window.closeArticleModal = function () {
 
 ## 27. 提交文章表單：新增或更新文章
 
+原始碼位置：`js/admin.js: 432-466`
+
 ```js
 document.getElementById('article-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -838,6 +1036,7 @@ document.getElementById('article-form').addEventListener('submit', async (e) => 
         tags,
         content,
         published,
+        authorUid: auth.currentUser?.uid ?? null,
         updatedAt: serverTimestamp()
     };
 ```
@@ -906,6 +1105,8 @@ await fetchAdminArticles();
 
 ## 29. 發布／下架文章：`togglePublish()`
 
+原始碼位置：`js/admin.js: 473-494`
+
 ```js
 window.togglePublish = async function (id, publishedState) {
     try {
@@ -913,7 +1114,7 @@ window.togglePublish = async function (id, publishedState) {
             published: publishedState,
             updatedAt: serverTimestamp()
         });
-        await fetchAdminArticles();
+        await refreshCurrentUserArticleList();
     } catch (error) {
         console.error("Error toggling publish state:", error);
         showModal("錯誤", "更新發佈狀態失敗：" + error.message);
@@ -936,12 +1137,14 @@ window.togglePublish = async function (id, publishedState) {
 
 ## 30. 刪除文章：`deleteArticle()`
 
+原始碼位置：`js/admin.js: 486-494`
+
 ```js
 window.deleteArticle = async function (id) {
     if (!confirm("確定要刪除這篇文章嗎？此動作無法復原。")) return;
     try {
         await deleteDoc(doc(db, 'articles', id));
-        await fetchAdminArticles();
+        await refreshCurrentUserArticleList();
     } catch (error) {
         console.error("Error deleting article:", error);
         showModal("錯誤", "刪除文章失敗：" + error.message);
@@ -960,6 +1163,8 @@ window.deleteArticle = async function (id) {
 ---
 
 ## 31. 核准／取消核准留言：`approveComment()`
+
+原始碼位置：`js/admin.js: 497-504`
 
 ```js
 window.approveComment = async function (id, status) {
@@ -1006,6 +1211,8 @@ window.deleteComment = async function (id) {
 ---
 
 ## 33. XSS 防護：`escapeHtml()`
+
+原始碼位置：`js/admin.js: 532-535`
 
 ```js
 function escapeHtml(str) {
