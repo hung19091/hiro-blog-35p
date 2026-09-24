@@ -17,7 +17,7 @@ service cloud.firestore {
 
     match /admins/{uid} {
       allow get: if isSignedIn() && request.auth.uid == uid;
-      allow create, update, delete: if isSignedIn() && request.auth.uid == uid;
+      allow create, update, delete: if isAdmin();
     }
 
     // ====== 文章集合 ======
