@@ -67,13 +67,39 @@ service firebase.storage {
   }
 }
 ```
-
 ### 步驟四：安裝 Firebase CLI 並部署
-於終端機安裝 Firebase Tools：
+最簡單的方式是直接雙擊專案根目錄的 `deploy.bat`。
+
+- 第一次使用：選 `1`，它會帶你做 `firebase login` 與 `firebase use --add`
+- 之後要發佈全部：選 `2`
+- 只想更新前台：選 `3`
+- 只想更新 Firestore / Storage 規則：選 `4`
+
+如果你比較習慣終端機，也可以照下面方式操作。
+
+先安裝 Firebase Tools：
 ```bash
 npm install -g firebase-tools
+```
+
+第一次設定：
+```bash
 firebase login
 firebase use --add
-firebase deploy
 ```
+
+常用部署指令：
+```bash
+firebase deploy
+firebase deploy --only hosting
+firebase deploy --only firestore:rules,storage
+```
+
+或使用 package.json 內建 script：
+```bash
+npm run deploy
+npm run deploy:hosting
+npm run deploy:rules
+```
+
 部署完成後，即可透過 Firebase 提供的 Hosting 網址造訪前台部落格與後台 (`/admin.html`)。
