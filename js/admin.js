@@ -11,9 +11,9 @@ let imageUploadInProgress = false;
 const editorActions = {
     h1() { return applyEditorFormat('heading', '# ', '標題'); },
     h2() { return applyEditorFormat('heading', '## ', '副標題'); },
-    bold() { return applyEditorFormat('wrapper', '**', '粗體文字'); },
-    italic() { return applyEditorFormat('wrapper', '*', '斜體文字'); },
-    quote() { return applyEditorFormat('block', '> ', '引用內容'); },
+    bold() { return applyEditorFormat('wrapper', '**', '**'); },
+    italic() { return applyEditorFormat('wrapper', '*', '*'); },
+    quote() { return applyEditorFormat('block', '> ', ''); },
     code() { return applyEditorFormat('block', '```\n', '\n```'); },
     'unordered-list'() { return applyEditorFormat('list', '- ', '列表項目'); },
     'ordered-list'() { return applyEditorFormat('list', '1. ', '列表項目'); },
@@ -134,13 +134,25 @@ function insertMarkdownImage(url, altText = '圖片') {
     const markdown = `![${altText}](${url})\n\n`;
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
-    const before = textarea.value.slice(0, start);
-    const after = textarea.value.slice(end);
-    textarea.value = `${before}${markdown}${after}`;
+    const scrollTop = textarea.scrollTop;
+    const scrollLeft = textarea.scrollLeft;
 
-    const newCursor = start + markdown.length;
-    textarea.focus();
-    textarea.setSelectionRange(newCursor, newCursor);
+    textarea.focus({ preventScroll: true });
+    if (typeof textarea.setSelectionRange === 'function') {
+        textarea.setSelectionRange(start, end);
+    }
+
+    const inserted = document.execCommand('insertText', false, markdown);
+    if (!inserted) {
+        const before = textarea.value.slice(0, start);
+        const after = textarea.value.slice(end);
+        textarea.value = `${before}${markdown}${after}`;
+        const newCursor = start + markdown.length;
+        textarea.setSelectionRange(newCursor, newCursor);
+    }
+
+    textarea.scrollTop = scrollTop;
+    textarea.scrollLeft = scrollLeft;
 
     const preview = document.getElementById('editor-preview');
     if (preview && preview.classList.contains('active')) {
@@ -154,6 +166,8 @@ function applyEditorFormat(type, prefix, suffix) {
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
+    const scrollTop = textarea.scrollTop;
+    const scrollLeft = textarea.scrollLeft;
     const selected = textarea.value.slice(start, end) || '文字';
     let insertText = '';
 
@@ -168,12 +182,26 @@ function applyEditorFormat(type, prefix, suffix) {
         insertText = lines.map((line) => `${prefix}${line}`).join('\n');
     }
 
-    const before = textarea.value.slice(0, start);
-    const after = textarea.value.slice(end);
-    textarea.value = `${before}${insertText}${after}`;
-    const cursorStart = start + insertText.length;
-    textarea.focus();
-    textarea.setSelectionRange(start, cursorStart);
+    try {
+        textarea.focus({ preventScroll: true });
+    } catch (error) {
+        textarea.focus();
+    }
+    if (typeof textarea.setSelectionRange === 'function') {
+        textarea.setSelectionRange(start, end);
+    }
+
+    const inserted = document.execCommand('insertText', false, insertText);
+    if (!inserted) {
+        const before = textarea.value.slice(0, start);
+        const after = textarea.value.slice(end);
+        textarea.value = `${before}${insertText}${after}`;
+        const cursorStart = start + insertText.length;
+        textarea.setSelectionRange(start, cursorStart);
+    }
+
+    textarea.scrollTop = scrollTop;
+    textarea.scrollLeft = scrollLeft;
 
     const preview = document.getElementById('editor-preview');
     if (preview && preview.classList.contains('active')) {
