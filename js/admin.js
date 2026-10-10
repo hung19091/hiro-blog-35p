@@ -21,6 +21,21 @@ const editorActions = {
     image() { return triggerImageUpload(); }
 };
 
+// 將 Markdown 轉換成 HTML 並顯示
+function renderMarkdownToHTML(markdownText, targetElement) {
+    // 1. 使用 marked 解析 Markdown
+    targetElement.innerHTML = marked.parse(markdownText);
+
+    // 2. 呼叫 KaTeX 自動渲染該區塊內的數學公式
+    renderMathInElement(targetElement, {
+        delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+        ],
+        throwOnError: false
+    });
+}
+
 function initialiseArticleEditor() {
     const textarea = document.getElementById('form-content');
     const preview = document.getElementById('editor-preview');
@@ -30,7 +45,8 @@ function initialiseArticleEditor() {
 
     const renderPreview = () => {
         if (typeof marked !== 'undefined') {
-            preview.innerHTML = marked.parse(textarea.value || '');
+            //preview.innerHTML = marked.parse(textarea.value || '');
+			renderMarkdownToHTML(textarea.value || '', preview);
         } else {
             preview.innerHTML = '<p class="text-sm text-amber-300">Markdown preview unavailable.</p>';
         }
@@ -156,7 +172,8 @@ function insertMarkdownImage(url, altText = '圖片') {
 
     const preview = document.getElementById('editor-preview');
     if (preview && preview.classList.contains('active')) {
-        preview.innerHTML = marked.parse(textarea.value || '');
+        //preview.innerHTML = marked.parse(textarea.value || '');
+		renderMarkdownToHTML(textarea.value || '', preview);
     }
 }
 
@@ -205,7 +222,8 @@ function applyEditorFormat(type, prefix, suffix) {
 
     const preview = document.getElementById('editor-preview');
     if (preview && preview.classList.contains('active')) {
-        preview.innerHTML = marked.parse(textarea.value || '');
+        //preview.innerHTML = marked.parse(textarea.value || '');
+		renderMarkdownToHTML(textarea.value || '', preview);
     }
 }
 

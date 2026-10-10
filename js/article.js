@@ -49,7 +49,8 @@ async function fetchArticleBySlug(slug) {
         }
 
         const bodyEl = document.getElementById('art-body');
-        bodyEl.innerHTML = marked.parse(art.content || '');
+        //bodyEl.innerHTML = marked.parse(art.content || '');
+		renderMarkdownToHTML(art.content || '', bodyEl);
 
         document.getElementById('article-loading').classList.add('hidden');
         document.getElementById('article-content-wrapper').classList.remove('hidden');
@@ -60,6 +61,21 @@ async function fetchArticleBySlug(slug) {
         console.error("Error fetching article:", error);
         document.getElementById('article-loading').innerHTML = `<p class="text-center text-red-400 py-10">載入文章發生錯誤：${escapeHtml(error.message)}</p>`;
     }
+}
+
+// 將 Markdown 轉換成 HTML 並顯示
+function renderMarkdownToHTML(markdownText, targetElement) {
+    // 1. 使用 marked 解析 Markdown
+    targetElement.innerHTML = marked.parse(markdownText);
+
+    // 2. 呼叫 KaTeX 自動渲染該區塊內的數學公式
+    renderMathInElement(targetElement, {
+        delimiters: [
+            {left: '$$', right: '$$', display: true},
+            {left: '$', right: '$', display: false}
+        ],
+        throwOnError: false
+    });
 }
 
 function getArticleSlug() {
